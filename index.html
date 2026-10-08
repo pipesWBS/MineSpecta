@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MineSpectra Stream Client</title>
+    <!-- SEO Tags to help people find your site on Google -->
+    <meta name="description" content="MineSpectra - Standalone PrismarineJS style web spectator client for monitoring Minecraft servers in real-time.">
+    <meta name="keywords" content="minecraft cracked spectator, prismarinejs browser client, minecraft live map viewer, minecraft web tracker">
+    <!-- Embedded Three.js Engine Dependency -->
+    <script src="https://cloudflare.com"></script>
+    <style>
+        :root {
+            --panel-bg: #1c1c1e;
+            --main-bg: #111112;
+            --accent-blue: #0078d7;
+            --accent-red: #d32f2f;
+            --text-main: #ffffff;
+            --text-sub: #aaaaaa;
+            --border-ui: #2c2c2e;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--main-bg);
+            color: var(--text-main);
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            display: grid;
+            grid-template-columns: 320px 1fr;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 1fr;
+            }
+        }
+
+        /* Side Controls Panel Configuration */
+        .sidebar {
+            background-color: var(--panel-bg);
+            border-right: 1px solid var(--border-ui);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            height: 100vh;
+        }
+
+        .section {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-ui);
+        }
+
+        .section-title {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-sub);
+            margin-bottom: 12px;
+            font-weight: 700;
+        }
+
+        /* Form Inputs Matrix styling */
+        input, select {
+            width: 100%;
+            padding: 10px;
+            background: #2c2c2e;
+            border: 1px solid #444;
+            color: white;
+            outline: none;
+            margin-bottom: 10px;
+            font-size: 13px;
+            border-radius: 4px;
+        }
+
+        /* Action Controls Buttons Styling Only */
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            background-color: var(--accent-blue);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: center;
+            margin-bottom: 8px;
+            transition: background 0.2s ease;
+        }
+        .btn:hover { background-color: #0063b1; }
+        
+        .btn-danger { background-color: var(--accent-red); }
+        .btn-danger:hover { background-color: #b71c1c; }
+        
+        .btn-secondary { background-color: #3a3a3c; }
+        .btn-secondary:hover { background-color: #48484a; }
+
+        /* Real Players Cluster UI Grid */
+        .player-node {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: #2c2c2e;
+            border-radius: 4px;
+            margin-bottom: 6px;
+            font-size: 13px;
+            border-left: 3px solid #555;
+            cursor: pointer;
+        }
+        .player-node.active-track { border-left-color: var(--accent-blue); background: #3a3a3c; }
+        
+        .badge {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 12px;
+            font-weight: bold;
+        }
+        .bg-mining { background-color: #f59e0b; }
+        .bg-flying { background-color: #3b82f6; }
+        .bg-pvp { background-color: #ef4444; }
+
+        /* Game Viewport Stage Matrix */
+        .viewport-wrapper {
+            position: relative;
+            background-color: #000;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        #canvas-mount {
+            width: 100%;
+            flex: 1;
+        }
+
+        /* In-App Native Error Modal Card Layer Override */
+        .error-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(10, 10, 12, 0.95);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            z-index: 100;
+        }
+
+        .error-card {
+            background: #2c2c2e;
+            border: 1px solid var(--accent-red);
+            border-radius: 8px;
+            padding: 25px;
+            max-width: 450px;
+            width: 100%;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+            text-align: center;
+        }
+
+        .error-card h2 {
+            color: var(--accent-red);
+            font-size: 20px;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .error-card p {
+            color: var(--text-sub);
+            font-size: 13px;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        /* HUD Matrix Stream Graphic Interface Overlay */
+        .hud-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.65);
+            padding: 12px;
+            border-radius: 6px;
+            font-family: "SF Mono", Monaco, Consolas, monospace;
+            font-size: 11px;
+            line-height: 1.6;
+            pointer-events: none;
+            color: #4af2a1;
+            z-index: 10;
+        }
+
+        .center-crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: rgba(255,255,255,0.4);
+            font-size: 22px;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* Terminal Activity Line Streams */
+        .terminal-tray {
+            height: 120px;
+            background-color: #09090a;
+            border-top: 1px solid var(--border-ui);
+            padding: 12px;
+            font-family: "SF Mono", Monaco, Consolas, monospace;
+            font-size: 11px;
+            overflow-y: auto;
+            color: #e5e5ea;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar Matrix -->
+    <div class="sidebar">
+        <div class="section">
+            <div class="section-title">Network Handshake Bridge</div>
+            <input type="text" id="node-ip-addr" placeholder="Server IP / Proxy Address" value="localhost">
+            <input type="text" id="node-port" placeholder="Port" value="25565">
+            
+            <select id="op-authorization">
+                <option value="false">Request Standard Spectator Mode</option>
+                <option value="true">Request Global Server OP Privileges</option>
+            </select>
+            <button class="btn" onclick="executeSocketHandshake()">Connect Server Stream</button>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Active Live Player Node Matrix</div>
+            <div id="real-players-cluster-target">
+                <div style="font-size:12px; color:var(--text-sub); text-align:center; padding:10px;">Awaiting Server Stream Session...</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Spectator Navigation Matrix</div>
+            <button class="btn btn-secondary" onclick="toggleCameraViewpointMode('freecam')">📹 Freecam Core Mode</button>
+            <button class="btn btn-secondary" onclick="toggleCameraViewpointMode('lock')">🔒 Target Lock Tracking</button>
+            <button class="btn" id="action-teleport-matrix-btn" onclick="teleportCameraToTargetVector()">⚡ Jump Coordinate Vector (TP)</button>
+        </div>
+
+        <div class="section" id="operator-actions-block" style="display: none;">
+            <div class="section-title" style="color: var(--accent-red);">Operator Remote Action Shell</div>
+            <button class="btn btn-danger" onclick="executeAdminActionPayload('kick')">Disconnect Target Node</button>
+            <button class="btn btn-danger" onclick="executeAdminActionPayload('ban')">Ban Vitals Address Matrix</button>
+        </div>
+    </div>
+
+    <!-- Active WebGL Viewport Window -->
+    <div class="viewport-wrapper">
+        <div class="center-crosshair">+</div>
+        
+        <div class="hud-overlay" id="hud-telemetry-panel">
+            PRISMARINE-JS METRICS: INACTIVE<br>
+            Awaiting local socket handshake execution binding.
+        </div>
+
+        <!-- In-App Custom Structural Native Error Matrix Panel -->
+        <div class="error-overlay" id="socket-error-screen" style="display: none;">
+            <div class="error-card">
+                <h2>❌ Minecraft Socket Handshake Refused</h2>
+                <p id="error-card-description">
+                    Failed to establish communication layers with the target server proxy block at localhost:25565. The channel timed out or the destination server instance has been shutdown.
+                </p>
+                <button class="btn btn-secondary" onclick="closeInAppErrorScreenCard()">Acknowledge & Adjust Parameters</button>
+            </div>
+        </div>
+
+        <div id="canvas-mount"></div>
+        
+        <div class="terminal-tray" id="terminal-stream-log">
